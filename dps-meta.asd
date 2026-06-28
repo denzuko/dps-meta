@@ -1,15 +1,10 @@
 ;;;; SPDX-License-Identifier: BSD-2-Clause
-;;;; dps-meta.asd
-
 (defsystem "dps-meta"
   :description "Standards scaffolding generator for the denzuko GitHub organisation"
   :version "0.1.1"
   :author "Den Zuko <den@dapla.net>"
   :licence "BSD-2-Clause"
-  :depends-on ("uiop"
-               "cl-inix"
-               "40ants-ci"
-               "consfigurator")
+  :depends-on ("uiop" "cl-inix" "40ants-ci")
   :components
   ((:module "dps/meta/ci"
     :components
@@ -18,21 +13,16 @@
      (:file "generate" :depends-on ("jobs"))))
    (:module "dps/meta/policy"
     :components
-    ((:file "slsa")
-     (:file "c-quality")
-     (:file "ast")))
+    ((:file "slsa") (:file "c-quality") (:file "ast")))
    (:module "dps/meta/identity"
     :components
-    ((:file "c99")
-     (:file "lisp")))
+    ((:file "c99") (:file "lisp")))
    (:module "dps/meta/governance"
     :components
     ((:file "templates")))
    (:module "dps/meta/properties"
-    :depends-on ("dps/meta/ci"
-                 "dps/meta/policy"
-                 "dps/meta/identity"
-                 "dps/meta/governance")
+    :depends-on ("dps/meta/ci" "dps/meta/policy"
+                 "dps/meta/identity" "dps/meta/governance")
     :components
     ((:file "common")
      (:file "c99-binary"    :depends-on ("common"))

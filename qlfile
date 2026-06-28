@@ -1,7 +1,5 @@
 dist http://beta.quicklisp.org/dist/quicklisp.txt
 dist http://dist.ultralisp.org/
 ultralisp 40ants-ci
-ql consfigurator
-ql fiveam
 ql cl-inix
-ql flexi-streams
+ql fiveam
