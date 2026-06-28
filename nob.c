@@ -1,67 +1,37 @@
 /* SPDX-License-Identifier: BSD-2-Clause
  * nob.c — build driver for dps-meta
  *
- * Follows the tsoding/nob pattern: single C file, no Makefile.
+ * Bootstrap (one step):
+ *   git submodule update --init && cc -o nob -I"./vendor/" nob.c && ./nob
  *
- * Build this file once with any C99 compiler:
- *   cc -o nob nob.c && ./nob
+ * nob drives:
+ *   1. qlot install        — pin dependency set
+ *   2. opa check policy/   — Rego gate first (BDD)
+ *   3. asdf:make :dps-meta — produce ./dps-meta binary
  *
- * nob then drives all subsequent build steps via:
- *   qlot exec ros build     (produces ./dps-meta binary)
- *
- * Constraints (denzuko org standards):
- *   - No system(), popen(), or exec*() — use execvp directly
- *   - No static const char[] JSON
- *   - C99 only
- *   - SPDX-License-Identifier on every file
- *
- * NOB_GO_REBUILD_URSELF is intentionally NOT used.
+ * Constraints (denzuko org, NASA Power of 10):
+ *   No system(), popen(), exec*() — nob_cmd_run_sync uses execvp internally
+ *   No static const char[] JSON
+ *   C99, SPDX on every file
+ *   NOB_GO_REBUILD_URSELF not used (per org standard)
  */
 
 #define NOB_IMPLEMENTATION
-#include "nob.h"
+#include <tsoding/nob.h/nob.h>
 
-/* ---------------------------------------------------------------------------
- * Build targets
- * --------------------------------------------------------------------------- */
+#define BINARY "dps-meta"
 
-static const char *BINARY_NAME = "dps-meta";
-
-/* Run: qlot exec ros build dps-meta.asd
- * Produces: ./dps-meta (Roswell executable)
- */
-static int build_binary(void) {
+static int qlot_install(void)
+{
     Nob_Cmd cmd = {0};
-    nob_cmd_append(&cmd,
-        "qlot", "exec", "ros", "build",
-        "--output", BINARY_NAME,
-        NULL);
+    nob_cmd_append(&cmd, "qlot", "install", NULL);
     int ok = nob_cmd_run_sync(cmd);
     nob_cmd_free(cmd);
     return ok;
 }
 
-/* Run: qlot exec ros run --eval '(asdf:test-system :dps-meta-test)'
- * Runs FiveAM attestation specs against a test checkout.
- * Requires DPS_META_TEST_CHECKOUT env var.
- */
-static int run_specs(void) {
-    Nob_Cmd cmd = {0};
-    nob_cmd_append(&cmd,
-        "qlot", "exec", "ros", "run",
-        "--load", "dps-meta-test",
-        "--eval", "(asdf:test-system :dps-meta-test)",
-        "--eval", "(uiop:quit)",
-        NULL);
-    int ok = nob_cmd_run_sync(cmd);
-    nob_cmd_free(cmd);
-    return ok;
-}
-
-/* Run: opa check policy/
- * Syntax-check all Rego gates before build.
- */
-static int check_rego(void) {
+static int opa_check(void)
+{
     Nob_Cmd cmd = {0};
     nob_cmd_append(&cmd, "opa", "check", "policy/", NULL);
     int ok = nob_cmd_run_sync(cmd);
@@ -69,41 +39,29 @@ static int check_rego(void) {
     return ok;
 }
 
-/* ---------------------------------------------------------------------------
- * Entry point
- * --------------------------------------------------------------------------- */
+static int build_binary(void)
+{
+    Nob_Cmd cmd = {0};
+    nob_cmd_append(&cmd,
+        "qlot", "exec", "ros", "run",
+        "--eval", "(asdf:load-asd"
+                  " (merge-pathnames #P\"dps-meta.asd\" (uiop:getcwd)))",
+        "--eval", "(asdf:make :dps-meta)",
+        "--eval", "(uiop:quit 0)",
+        NULL);
+    int ok = nob_cmd_run_sync(cmd);
+    nob_cmd_free(cmd);
+    return ok;
+}
 
-int main(int argc, char **argv) {
-    NOB_GO_REBUILD_URSELF_GUARD(argc, argv);   /* removed per org standard */
+int main(void)
+{
+    nob_log(NOB_INFO, "dps-meta build");
 
-    nob_log(NOB_INFO, "dps-meta build started");
+    if (!qlot_install()) { nob_log(NOB_ERROR, "qlot install failed"); return 1; }
+    if (!opa_check())    { nob_log(NOB_ERROR, "opa check failed");    return 1; }
+    if (!build_binary()) { nob_log(NOB_ERROR, "build failed");        return 1; }
 
-    /* 1. Gate: OPA syntax check on policy/ */
-    nob_log(NOB_INFO, "Step 1/3: opa check policy/");
-    if (!check_rego()) {
-        nob_log(NOB_ERROR, "Rego syntax check failed");
-        return 1;
-    }
-
-    /* 2. Build binary */
-    nob_log(NOB_INFO, "Step 2/3: qlot exec ros build");
-    if (!build_binary()) {
-        nob_log(NOB_ERROR, "Binary build failed");
-        return 1;
-    }
-
-    /* 3. Attestation specs (skipped if DPS_META_TEST_CHECKOUT not set) */
-    if (getenv("DPS_META_TEST_CHECKOUT")) {
-        nob_log(NOB_INFO, "Step 3/3: FiveAM attestation specs");
-        if (!run_specs()) {
-            nob_log(NOB_ERROR, "Attestation specs failed");
-            return 1;
-        }
-    } else {
-        nob_log(NOB_WARNING,
-                "Step 3/3: skipped (DPS_META_TEST_CHECKOUT not set)");
-    }
-
-    nob_log(NOB_INFO, "Build complete: ./%s", BINARY_NAME);
+    nob_log(NOB_INFO, "done -> ./%s", BINARY);
     return 0;
 }

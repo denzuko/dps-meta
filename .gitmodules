@@ -1,0 +1,3 @@
+[submodule "vendor/tsoding/nob.h"]
+	path = vendor/tsoding/nob.h
+	url = https://github.com/tsoding/nob.h.git
