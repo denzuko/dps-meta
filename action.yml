@@ -6,11 +6,6 @@
 #   - uses: denzuko/dps-meta@v1
 #     with:
 #       type: c99-binary   # or: c99-header | lisp-actor | shell-bats | quadlet-stack
-#
-# The action reads all other values from git config meta.* keys already set
-# in the target repo.  No YAML hand-authoring by the caller.
-#
-# Generated files are committed by the caller's workflow; dps-meta only writes.
 
 name: "dps-meta"
 description: >
@@ -27,8 +22,8 @@ branding:
 inputs:
   type:
     description: >
-      Repository type. Must match meta.type git config.
-      One of: c99-binary | c99-header | lisp-actor | shell-bats | quadlet-stack
+      Repository type. One of:
+      c99-binary | c99-header | lisp-actor | shell-bats | quadlet-stack
     required: true
 
 runs:
@@ -41,56 +36,66 @@ runs:
           c99-binary|c99-header|lisp-actor|shell-bats|quadlet-stack)
             echo "type=${{ inputs.type }}" ;;
           *)
-            echo "::error::Invalid type '${{ inputs.type }}'. Valid: c99-binary c99-header lisp-actor shell-bats quadlet-stack"
+            echo "::error::Invalid type '${{ inputs.type }}'"
             exit 1 ;;
         esac
 
-    - name: Assert meta.type git config matches action input
+    - name: Set meta.type git config
       shell: bash
       run: |
         CONFIGURED=$(git config meta.type 2>/dev/null || echo "")
         if [ -z "$CONFIGURED" ]; then
           git config meta.type "${{ inputs.type }}"
-          echo "Set meta.type=${{ inputs.type }}"
         elif [ "$CONFIGURED" != "${{ inputs.type }}" ]; then
-          echo "::error::meta.type git config ($CONFIGURED) does not match action input (${{ inputs.type }})"
+          echo "::error::meta.type git config ($CONFIGURED) != action input (${{ inputs.type }})"
           exit 1
         fi
 
-    - name: Assert required git config keys are set
+    - name: Assert required git config keys
       shell: bash
       run: |
-        missing=0
         for key in meta.application meta.role meta.version meta.branch; do
           val=$(git config "$key" 2>/dev/null || echo "")
           if [ -z "$val" ]; then
-            echo "::error::git config $key is not set in this repository"
-            missing=1
+            echo "::error::git config $key is not set"
+            exit 1
           fi
         done
-        [ "$missing" -eq 0 ] || exit 1
 
-    - name: Download dps-meta binary
+    - name: Setup Lisp
+      uses: 40ants/setup-lisp@v4
+      env:
+        LISP: sbcl-bin
+
+    - name: Install qlot
+      shell: bash
+      run: ros install qlot
+
+    - name: Checkout dps-meta source
+      uses: actions/checkout@v4
+      with:
+        repository: denzuko/dps-meta
+        ref: ${{ github.action_ref }}
+        path: .dps-meta-src
+
+    - name: Install dps-meta dependencies
       shell: bash
       run: |
-        curl -sSfL \
-          "https://github.com/denzuko/dps-meta/releases/latest/download/dps-meta-linux-amd64" \
-          -o /usr/local/bin/dps-meta
-        chmod +x /usr/local/bin/dps-meta
+        cd .dps-meta-src
+        qlot install
 
-    - name: Verify SLSA provenance of dps-meta binary
+    - name: Build dps-meta binary
       shell: bash
       run: |
-        curl -sSfL \
-          "https://github.com/denzuko/dps-meta/releases/latest/download/dps-meta-linux-amd64.intoto.jsonl" \
-          -o dps-meta.intoto.jsonl
-        slsa-verifier verify-artifact /usr/local/bin/dps-meta \
-          --provenance-path dps-meta.intoto.jsonl \
-          --source-uri github.com/denzuko/dps-meta
+        cd .dps-meta-src
+        qlot exec ros build --output ../dps-meta-bin
 
     - name: Run dps-meta
       shell: bash
       run: |
-        dps-meta
-      env:
-        DPS_META_TEST_CHECKOUT: ${{ github.workspace }}
+        export DPS_META_TEST_CHECKOUT="${{ github.workspace }}"
+        ./dps-meta-bin
+
+    - name: Cleanup dps-meta source
+      shell: bash
+      run: rm -rf .dps-meta-src dps-meta-bin
