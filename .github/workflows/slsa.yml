@@ -36,7 +36,8 @@ jobs:
         +x /usr/local/bin/opa\nopa check policy/\n"
     - name: Build binary
       run: "opa check policy/\nqlot exec ros run \\\n  --eval \"(asdf:load-asd (merge-pathnames #P\\\"dps-meta.asd\\\" (uiop:getcwd)))\"\
-        \ \\\n  --eval \"(asdf:make :dps-meta)\" \\\n  --eval \"(uiop:quit 0)\"\nls -la dps-meta\n"
+        \ \\\n  --eval \"(asdf:load-system :dps-meta)\" \\\n  --eval \"(sb-ext:save-lisp-and-die \\\"dps-meta\\\" :toplevel
+        #'dps.meta:main :executable t :compression t)\"\nls -lh dps-meta\n"
     - name: Generate SHA256 hash
       id: hash
       run: "sha256sum dps-meta > dps-meta.sha256\ncat dps-meta.sha256\necho \"hashes=$(base64 -w0 < dps-meta.sha256)\" >>

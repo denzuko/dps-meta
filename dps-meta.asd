@@ -33,7 +33,4 @@
    (:module "dps/meta"
     :depends-on ("dps/meta/properties")
     :components
-    ((:file "main"))))
-  :build-operation "program-op"
-  :build-pathname "dps-meta"
-  :entry-point "dps.meta:main")
+    ((:file "main")
