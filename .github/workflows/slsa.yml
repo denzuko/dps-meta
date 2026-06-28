@@ -28,7 +28,7 @@ jobs:
       run: "ROS_VER=26.02.116\ncurl -sL \"https://github.com/roswell/roswell/releases/download/v${ROS_VER}/roswell_${ROS_VER}-1_amd64.deb\"\
         \ -o /tmp/roswell.deb\nsudo dpkg -i /tmp/roswell.deb\nros install sbcl-bin\necho \"$HOME/.roswell/bin\" >> $GITHUB_PATH\n"
     - name: Install qlot
-      run: "ros install qlot || true\nls ~/.roswell/bin/qlot\n"
+      run: "ros install qlot || true\n"
     - name: Install dependencies
       run: "qlot install\n"
     - name: OPA gate — Rego syntax

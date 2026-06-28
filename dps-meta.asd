@@ -33,4 +33,4 @@
    (:module "dps/meta"
     :depends-on ("dps/meta/properties")
     :components
-    ((:file "main")
+    ((:file "main")))))

@@ -1,6 +1,5 @@
-dist http://beta.quicklisp.org/dist/quicklisp.txt
-dist http://dist.ultralisp.org/
-ultralisp 40ants-ci
+dist ultralisp https://dist.ultralisp.org/
 ql cl-inix
 ql fiveam
 ql flexi-streams
+ultralisp 40ants-ci
