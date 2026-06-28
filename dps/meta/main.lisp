@@ -2,8 +2,8 @@
 ;;;; dps/meta/main.lisp
 ;;;;
 ;;;; Entry point. Reads meta.* from .git/config via cl-inix (no fork),
-;;;; applies Consfigurator defproplist for governance files,
-;;;; then calls 40ants/CI to emit .github/workflows/ci.yml.
+;;;; applies Consfigurator defproplist for governance files via :local,
+;;;; then calls 40ants/CI generate to emit .github/workflows/ci.yml.
 
 (defpackage #:dps.meta
   (:use #:cl)
@@ -18,19 +18,15 @@
 (in-package #:dps.meta)
 
 ;;; ---------------------------------------------------------------------------
-;;; git config reader — no fork, parse .git/config directly via cl-inix
+;;; git config reader — no fork, cl-inix parses .git/config in-process
 ;;; ---------------------------------------------------------------------------
 
 (defun read-git-config ()
-  "Parse .git/config in CWD and return the meta section as a plist.
-   Signals an error if the file is missing or meta.* keys are absent.
-   No subprocess spawned — cl-inix reads the ini file in-process."
+  "Parse .git/config in CWD and return meta.* values as a plist.
+   Uses cl-inix:read — no subprocess, no fork (NASA Power of 10 rule 6)."
   (let* ((config-path (merge-pathnames #P".git/config" (uiop:getcwd)))
-         (_ (unless (uiop:file-exists-p config-path)
-              (error "No .git/config found — run dps-meta inside a git checkout")))
          (config      (cl-inix:read config-path))
          (meta        (cdr (assoc "meta" config :test #'string=))))
-    (declare (ignore _))
     (unless meta
       (error "No [meta] section in .git/config.~%~
               Set required keys:~%~
@@ -51,7 +47,7 @@
                              "bsd-2-clause")))))
 
 ;;; ---------------------------------------------------------------------------
-;;; Dispatch
+;;; Dispatch table
 ;;; ---------------------------------------------------------------------------
 
 (defparameter *scaffold-dispatch*
@@ -60,6 +56,26 @@
     ("lisp-actor"    . lisp-actor-scaffold)
     ("shell-bats"    . shell-bats-scaffold)
     ("quadlet-stack" . quadlet-stack-scaffold)))
+
+;;; ---------------------------------------------------------------------------
+;;; Apply governance properties via Consfigurator :local connection
+;;; ---------------------------------------------------------------------------
+
+(defun apply-governance (scaffold-sym config)
+  "Apply SCAFFOLD-SYM property combinator to the local checkout via
+   Consfigurator deploy-these* with a :local connection.
+   No defhost required — make-host constructs a minimal anonymous host."
+  (consfigurator:deploy-these*
+    '((:local))
+    (consfigurator:make-host
+      :hostattrs `(:hostname (,(uiop:hostname))))
+    (consfigurator:make-propspec
+      :propspec `(consfigurator:eseqprops
+                   (,scaffold-sym ,config)))))
+
+;;; ---------------------------------------------------------------------------
+;;; Entry point
+;;; ---------------------------------------------------------------------------
 
 (defun main ()
   (handler-case
@@ -73,10 +89,9 @@
                 (getf config :application)
                 (getf config :version)
                 type)
-        ;; 1. Governance files via Consfigurator localhd (:local connection)
-        (consfigurator:localhd
-          (funcall (symbol-function (cdr entry)) config))
-        ;; 2. CI workflow via 40ants/CI
+        ;; 1. Governance files + identity headers via Consfigurator :local
+        (apply-governance (cdr entry) config)
+        ;; 2. .github/workflows/ci.yml via 40ants/CI
         (generate-ci-workflow config)
         (format t "~&[dps-meta] Done.~%")
         (uiop:quit 0))
