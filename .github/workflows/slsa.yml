@@ -40,7 +40,8 @@ jobs:
         opa check policy/
 
     - name: Build binary
-      run: "qlot exec ros build dps-meta.asd\nls -la dps-meta* || true\n"
+      run: "qlot exec ros run --eval \"(asdf:load-asd #P\\\"dps-meta.asd\\\")\" \\\n  --eval \"(asdf:make :dps-meta)\" \\\n\
+        \  --eval \"(uiop:quit 0)\"\nls -la dps-meta\n"
 
     - name: Generate SHA256 hash
       id: hash
