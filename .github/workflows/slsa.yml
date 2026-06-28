@@ -1,0 +1,125 @@
+# SPDX-License-Identifier: BSD-2-Clause
+# .github/workflows/slsa.yml — SLSA Level 3 provenance + GitHub Release
+# Triggered on version tags (v*). Builds binary, attests, releases.
+
+name: SLSA Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  LISP: sbcl-bin
+  BINARY: dps-meta
+
+jobs:
+  build:
+    name: Build binary
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      hashes: ${{ steps.hash.outputs.hashes }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Lisp
+        uses: 40ants/setup-lisp@v4
+
+      - name: Install qlot
+        run: ros install qlot
+
+      - name: Install dependencies
+        run: qlot install
+
+      - name: OPA gate — Rego syntax
+        run: |
+          curl -sL https://openpolicyagent.org/downloads/latest/opa_linux_amd64_static \
+            -o /usr/local/bin/opa && chmod +x /usr/local/bin/opa
+          opa check policy/
+
+      - name: Build binary
+        run: qlot exec ros build --output ${{ env.BINARY }}
+
+      - name: Generate SHA256 hash
+        id: hash
+        run: |
+          sha256sum ${{ env.BINARY }} > ${{ env.BINARY }}.sha256
+          echo "hashes=$(cat ${{ env.BINARY }}.sha256 | base64 -w0)" >> "$GITHUB_OUTPUT"
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.BINARY }}
+          path: |
+            ${{ env.BINARY }}
+            ${{ env.BINARY }}.sha256
+
+  provenance:
+    name: SLSA provenance
+    needs: build
+    permissions:
+      id-token: write
+      contents: write
+      actions: read
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2
+    with:
+      base64-subjects: ${{ needs.build.outputs.hashes }}
+      upload-assets: true
+
+  verify:
+    name: Verify provenance
+    runs-on: ubuntu-24.04
+    needs: provenance
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: read
+    steps:
+      - name: Download binary
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.BINARY }}
+
+      - name: Download provenance
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.BINARY }}.intoto.jsonl
+
+      - name: Install slsa-verifier
+        run: |
+          curl -sL https://github.com/slsa-framework/slsa-verifier/releases/latest/download/slsa-verifier-linux-amd64 \
+            -o /usr/local/bin/slsa-verifier && chmod +x /usr/local/bin/slsa-verifier
+
+      - name: Verify provenance
+        run: |
+          slsa-verifier verify-artifact ${{ env.BINARY }} \
+            --provenance-path ${{ env.BINARY }}.intoto.jsonl \
+            --source-uri github.com/denzuko/dps-meta
+
+  release:
+    name: GitHub Release
+    runs-on: ubuntu-24.04
+    needs: verify
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+    steps:
+      - name: Download binary
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.BINARY }}
+
+      - name: Download provenance
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.BINARY }}.intoto.jsonl
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ${{ env.BINARY }}
+            ${{ env.BINARY }}.sha256
+            ${{ env.BINARY }}.intoto.jsonl
+          generate_release_notes: true

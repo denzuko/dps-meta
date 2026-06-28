@@ -13,4 +13,5 @@
     :components
     ((:file "specs"))))
   :perform (test-op (op c)
-             (symbol-call :fiveam :run! 'dps.meta.attestation:all)))
+             (uiop:symbol-call :fiveam :run!
+               (uiop:find-symbol* :all :dps.meta.attestation))))
