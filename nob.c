@@ -1,13 +1,18 @@
 /* SPDX-License-Identifier: BSD-2-Clause
  * nob.c — build driver for dps-meta
  *
- * Bootstrap (one step):
- *   git submodule update --init && cc -o nob -I"./vendor/" nob.c && ./nob
+ * Bootstrap (one step from a clean checkout):
+ *   git submodule update --init
+ *   qlot install
+ *   cc -o nob -I"./vendor/" nob.c && ./nob
  *
  * nob drives:
- *   1. qlot install        — pin dependency set
- *   2. opa check policy/   — Rego gate first (BDD)
- *   3. asdf:make :dps-meta — produce ./dps-meta binary
+ *   1. opa check policy/   — Rego gate first (BDD)
+ *   2. asdf:make :dps-meta — produce ./dps-meta binary
+ *
+ * qlot install is intentionally NOT run here — it is the caller's
+ * responsibility (CI step or developer shell) so that the .qlot/
+ * environment is not regenerated mid-build with a different qlot binary.
  *
  * Constraints (denzuko org, NASA Power of 10):
  *   No system(), popen(), exec*() — nob_cmd_run_sync uses execvp internally
@@ -20,15 +25,6 @@
 #include <tsoding/nob.h/nob.h>
 
 #define BINARY "dps-meta"
-
-static int qlot_install(void)
-{
-    Nob_Cmd cmd = {0};
-    nob_cmd_append(&cmd, "qlot", "install", NULL);
-    int ok = nob_cmd_run_sync(cmd);
-    nob_cmd_free(cmd);
-    return ok;
-}
 
 static int opa_check(void)
 {
@@ -58,9 +54,8 @@ int main(void)
 {
     nob_log(NOB_INFO, "dps-meta build");
 
-    if (!qlot_install()) { nob_log(NOB_ERROR, "qlot install failed"); return 1; }
-    if (!opa_check())    { nob_log(NOB_ERROR, "opa check failed");    return 1; }
-    if (!build_binary()) { nob_log(NOB_ERROR, "build failed");        return 1; }
+    if (!opa_check())    { nob_log(NOB_ERROR, "opa check failed"); return 1; }
+    if (!build_binary()) { nob_log(NOB_ERROR, "build failed");     return 1; }
 
     nob_log(NOB_INFO, "done -> ./%s", BINARY);
     return 0;
