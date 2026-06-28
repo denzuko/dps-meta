@@ -2,15 +2,7 @@
  (:class qlot/source/dist:source-dist
   :initargs (:distribution "https://beta.quicklisp.org/dist/quicklisp.txt" :%version :latest)
   :version "2026-01-01"))
-("consfigurator" .
- (:class qlot/source/ql:source-ql
-  :initargs (:%version :latest)
-  :version "ql-2026-01-01"))
 ("fiveam" .
  (:class qlot/source/ql:source-ql
   :initargs (:%version :latest)
   :version "ql-2024-10-12"))
-("40ants-ci" .
- (:class qlot/source/github:source-github
-  :initargs (:repos "40ants/ci" :ref nil :branch nil :tag nil)
-  :version "github-1ce4f302465807cf62915c17d29b584d92e6d244"))

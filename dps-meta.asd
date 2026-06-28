@@ -6,10 +6,7 @@
   :version "0.1.0"
   :author "Den Zuko <den@dapla.net>"
   :licence "BSD-2-Clause"
-  :depends-on ("consfigurator"
-               "40ants-ci"
-               "fiveam"
-               "uiop")
+  :depends-on ("uiop")
   :components
   ((:module "dps/meta/policy"
     :components
@@ -23,11 +20,6 @@
    (:module "dps/meta/governance"
     :components
     ((:file "templates")))
-   (:module "dps/meta/ci"
-    :components
-    ((:file "slsa-job")
-     (:file "opa-gate-job")
-     (:file "sbom-job")))
    (:module "dps/meta/properties"
     :depends-on ("dps/meta/policy"
                  "dps/meta/identity"
@@ -40,8 +32,7 @@
      (:file "shell-bats"  :depends-on ("common"))
      (:file "quadlet-stack" :depends-on ("common"))))
    (:module "dps/meta"
-    :depends-on ("dps/meta/properties"
-                 "dps/meta/ci")
+    :depends-on ("dps/meta/properties")
     :components
     ((:file "main"))))
   :build-operation "program-op"

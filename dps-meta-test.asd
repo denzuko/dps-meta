@@ -6,8 +6,7 @@
   :version "0.1.0"
   :author "Den Zuko <den@dapla.net>"
   :licence "BSD-2-Clause"
-  :depends-on ("dps-meta"
-               "fiveam")
+  :depends-on ("dps-meta" "fiveam")
   :components
   ((:module "dps/meta/attestation"
     :components
