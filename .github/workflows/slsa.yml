@@ -22,42 +22,30 @@ jobs:
     outputs:
       hashes: ${{ steps.hash.outputs.hashes }}
     steps:
-    - uses: actions/checkout@v4
-
-    - name: Setup Lisp
-      uses: 40ants/setup-lisp@v4
-
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Install Roswell + SBCL
+      run: "ROS_VER=26.02.116\ncurl -sL \"https://github.com/roswell/roswell/releases/download/v${ROS_VER}/roswell_${ROS_VER}-1_amd64.deb\"\
+        \ -o /tmp/roswell.deb\nsudo dpkg -i /tmp/roswell.deb\nros install sbcl-bin\necho \"$HOME/.roswell/bin\" >> $GITHUB_PATH\n"
     - name: Install qlot
-      run: ros install qlot
-
+      run: "ros install qlot\n"
     - name: Install dependencies
-      run: qlot install
-
+      run: "qlot install\n"
     - name: OPA gate — Rego syntax
-      run: |
-        curl -sL https://openpolicyagent.org/downloads/latest/opa_linux_amd64_static \
-          -o /usr/local/bin/opa && chmod +x /usr/local/bin/opa
-        opa check policy/
-
+      run: "curl -sL https://openpolicyagent.org/downloads/latest/opa_linux_amd64_static \\\n  -o /usr/local/bin/opa && chmod
+        +x /usr/local/bin/opa\nopa check policy/\n"
     - name: Build binary
-      run: "qlot exec ros run --eval \"(asdf:load-asd #P\\\"dps-meta.asd\\\")\" \\\n  --eval \"(asdf:make :dps-meta)\" \\\n\
-        \  --eval \"(uiop:quit 0)\"\nls -la dps-meta\n"
-
+      run: "qlot exec ros run \\\n  --eval \"(asdf:load-asd (merge-pathnames #P\\\"dps-meta.asd\\\" (uiop:getcwd)))\" \\\n\
+        \  --eval \"(asdf:make :dps-meta)\" \\\n  --eval \"(uiop:quit 0)\"\nls -la dps-meta\n"
     - name: Generate SHA256 hash
       id: hash
-      run: |
-        sha256sum dps-meta > dps-meta.sha256
-        cat dps-meta.sha256
-        echo "hashes=$(base64 -w0 < dps-meta.sha256)" >> "$GITHUB_OUTPUT"
-
+      run: "sha256sum dps-meta > dps-meta.sha256\ncat dps-meta.sha256\necho \"hashes=$(base64 -w0 < dps-meta.sha256)\" >>
+        \"$GITHUB_OUTPUT\"\n"
     - name: Upload binary artifact
       uses: actions/upload-artifact@v4
       with:
         name: ${{ env.BINARY }}
-        path: |
-          dps-meta
-          dps-meta.sha256
-
+        path: "dps-meta\ndps-meta.sha256\n"
   provenance:
     name: SLSA provenance
     needs: build

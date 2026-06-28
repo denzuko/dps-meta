@@ -38,25 +38,19 @@ jobs:
       contents: read
     steps:
     - uses: actions/checkout@v4
-
-    - name: Setup Lisp
-      uses: 40ants/setup-lisp@v4
-        # No asdf-system: let setup-lisp install ros only; we run qlot ourselves
-
+    - name: Install Roswell + SBCL
+      run: "ROS_VER=26.02.116\ncurl -sL \"https://github.com/roswell/roswell/releases/download/v${ROS_VER}/roswell_${ROS_VER}-1_amd64.deb\"\
+        \ -o /tmp/roswell.deb\nsudo dpkg -i /tmp/roswell.deb\nros install sbcl-bin\n\
+        echo \"$HOME/.roswell/bin\" >> $GITHUB_PATH\n"
     - name: Install qlot
-      run: ros install qlot
-
+      run: "ros install qlot\n"
     - name: Install dependencies
-      run: qlot install
-
+      run: "qlot install\n"
     - name: Load system check
-      run: |
-        qlot exec ros run \
-          --eval "(asdf:load-asd #P\"dps-meta.asd\")" \
-          --eval "(asdf:load-system :dps-meta)" \
-          --eval "(format t \"~&dps-meta loaded OK~%\")" \
-          --eval "(uiop:quit 0)"
-
+      run: "qlot exec ros run \\\n  --eval \"(asdf:load-asd (merge-pathnames #P\\\"\
+        dps-meta.asd\\\" (uiop:getcwd)))\" \\\n  --eval \"(asdf:load-system :dps-meta)\"\
+        \ \\\n  --eval \"(format t \\\"~&dps-meta loaded OK~%\\\")\" \\\n  --eval
+        \"(uiop:quit 0)\"\n"
   sbom:
     name: CycloneDX SBOM + OSV scan
     runs-on: ubuntu-24.04
