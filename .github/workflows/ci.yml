@@ -20,15 +20,15 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-      - name: Install OPA
-        run: |
-          curl -sL https://openpolicyagent.org/downloads/latest/opa_linux_amd64_static \
-            -o /usr/local/bin/opa && chmod +x /usr/local/bin/opa
+    - name: Install OPA
+      run: |
+        curl -sL https://openpolicyagent.org/downloads/latest/opa_linux_amd64_static \
+          -o /usr/local/bin/opa && chmod +x /usr/local/bin/opa
 
-      - name: Check Rego syntax
-        run: opa check policy/
+    - name: Check Rego syntax
+      run: opa check policy/
 
   test:
     name: FiveAM attestation specs
@@ -37,24 +37,24 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-      - name: Setup Lisp
-        uses: 40ants/setup-lisp@v4
+    - name: Setup Lisp
+      uses: 40ants/setup-lisp@v4
         # No asdf-system: let setup-lisp install ros only; we run qlot ourselves
 
-      - name: Install qlot
-        run: ros install qlot
+    - name: Install qlot
+      run: ros install qlot
 
-      - name: Install dependencies
-        run: qlot install
+    - name: Install dependencies
+      run: qlot install
 
-      - name: Load system check
-        run: |
-          qlot exec sbcl --noinform \
-            --eval '(asdf:load-system :dps-meta)' \
-            --eval '(format t "~&dps-meta loaded OK~%")' \
-            --eval '(uiop:quit 0)'
+    - name: Load system check
+      run: |
+        qlot exec ros run \
+          --eval "(asdf:load-system :dps-meta)" \
+          --eval "(format t \"~&dps-meta loaded OK~%\")" \
+          --eval "(uiop:quit 0)"
 
   sbom:
     name: CycloneDX SBOM + OSV scan
@@ -63,22 +63,22 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
 
-      - name: Install cdxgen
-        run: npm install -g @cyclonedx/cdxgen
+    - name: Install cdxgen
+      run: npm install -g @cyclonedx/cdxgen
 
-      - name: Generate SBOM
-        run: cdxgen --type generic --output sbom.json .
+    - name: Generate SBOM
+      run: cdxgen --type generic --output sbom.json .
 
-      - name: Upload SBOM
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: sbom.json
-          path: sbom.json
+    - name: Upload SBOM
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: sbom.json
+        path: sbom.json
