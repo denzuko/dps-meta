@@ -40,21 +40,22 @@ jobs:
         opa check policy/
 
     - name: Build binary
-      run: qlot exec ros build --output ${{ env.BINARY }}
+      run: "qlot exec ros build dps-meta.asd\nls -la dps-meta* || true\n"
 
     - name: Generate SHA256 hash
       id: hash
       run: |
-        sha256sum ${{ env.BINARY }} > ${{ env.BINARY }}.sha256
-        echo "hashes=$(cat ${{ env.BINARY }}.sha256 | base64 -w0)" >> "$GITHUB_OUTPUT"
+        sha256sum dps-meta > dps-meta.sha256
+        cat dps-meta.sha256
+        echo "hashes=$(base64 -w0 < dps-meta.sha256)" >> "$GITHUB_OUTPUT"
 
     - name: Upload binary artifact
       uses: actions/upload-artifact@v4
       with:
         name: ${{ env.BINARY }}
         path: |
-          ${{ env.BINARY }}
-          ${{ env.BINARY }}.sha256
+          dps-meta
+          dps-meta.sha256
 
   provenance:
     name: SLSA provenance
@@ -63,8 +64,7 @@ jobs:
       id-token: write
       contents: write
       actions: read
-    uses: 
-      slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.0.0
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.0.0
     with:
       base64-subjects: ${{ needs.build.outputs.hashes }}
       upload-assets: true
