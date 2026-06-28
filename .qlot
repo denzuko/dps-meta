@@ -1,0 +1,10 @@
+# dps-meta qlot source declarations
+# Run: qlot install   to generate qlot.lock
+# Run: qlot exec ros build   to produce the dps-meta binary
+
+source ql 2024-04-21
+
+# Pinned direct dependencies
+ql consfigurator
+ql 40ants-ci
+ql fiveam
