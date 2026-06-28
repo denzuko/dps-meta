@@ -3,3 +3,4 @@ dist http://dist.ultralisp.org/
 ultralisp 40ants-ci
 ql cl-inix
 ql fiveam
+ql flexi-streams
