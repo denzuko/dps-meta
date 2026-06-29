@@ -3,3 +3,6 @@ ql cl-inix
 ql fiveam
 ql flexi-streams
 ultralisp 40ants-ci
+
+ql drakma
+ql cl-mock
